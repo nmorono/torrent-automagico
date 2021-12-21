@@ -1,0 +1,118 @@
+---
+version: "2.1"
+services:
+  transmission:
+    image: lscr.io/linuxserver/transmission
+    container_name: transmission
+    environment:
+      - PUID=1234
+      - PGID=1234
+      - TZ=America/Argentina/Buenos_Aires
+      - TRANSMISSION_WEB_HOME=/combustion-release/ #optional
+      - USER=admin #optional
+      - PASS=123456 #optional
+    volumes:
+      - /disco/transmission/config:/config
+      - /disco/media/downloads:/downloads
+      - /disco/transmission/watch:/watch
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    restart: unless-stopped
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1234
+      - PGID=1234
+      - TZ=America/Argentina/Buenos_Aires
+      - AUTO_UPDATE=true #optional
+      #- RUN_OPTS=<run options here> #optional
+    volumes:
+      - /disco/jackett/config:/config
+      - /disco/media/downloads:/downloads
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+  sonarr:
+    image: lscr.io/linuxserver/sonarr
+    container_name: sonarr
+    environment:
+      - PUID=1234
+      - PGID=1234
+      - TZ=America/Argentina/Buenos_Aires
+    volumes:
+      - /disco/sonarr/config:/config
+      #- /disco/media/tv:/tv #optional
+      - /disco/media/downloads:/downloads #optional
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+  radarr:
+    image: lscr.io/linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=1234
+      - PGID=1234
+      - TZ=America/Argentina/Buenos_Aires
+    volumes:
+      - /disco/radarr/config:/config
+      #- /disco/media/tv:/tv #optional
+      - /disco/media/downloads:/downloads #optional
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+  plex:
+    #image: plexinc/pms-docker #Lo pase a raspberry y la oficial no tiene imagen
+    image: lscr.io/linuxserver/plex
+    container_name: plex
+    environment:
+      - PUID=1234
+      - PLEX_CLAIM=claim-12345678900001234567
+      - PGID=1234
+      - ALLOWED_NETWORKS=192.168.0.0/24,172.21.0.0/24
+      - TZ=America/Argentina/Buenos_Aires
+      - VERSION=docker
+      - ADVERTISE_IP="http://192.168.0.120:8200/"
+    volumes:
+      - ./plex-config:/config
+      - /disco/media/downloads/tv:/tv
+      - /disco/media/downloads/movies:/movies
+      - /disco/media/downloads/media:/data
+    restart: unless-stopped
+    ports:
+      - 8200:32400
+### Este container no me gusta no levanta con id 1234 como yo quiero
+#   parece solo un python voy a probar buildearlo
+  addarr:
+    container_name: addarr
+    image: waterboy1602/addarr
+    restart: unless-stopped
+    environment:
+      - PUID=1234
+      - PGID=1234
+    volumes:
+    - ./addarr/config/config.yaml:/app/config.yaml:ro
+    - ./addarr/config/chatid.txt:/app/chatid.txt:rw
+    - ./addarr/config/admin.txt:/app/admin.txt:ro
+  smb:
+    image: dperson/samba
+    container_name: smb
+    environment:
+      TZ: 'EST5EDT'
+    ports:
+      - "137:137/udp"
+      - "138:138/udp"
+      - "139:139/tcp"
+      - "445:445/tcp"
+    read_only: false
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    volumes:
+      - /disco/media/downloads/forbidden:/mnt:z
+      - /disco/backup:/backup
+    command: '-s "forbidden;/mnt;yes;no;no;forbidden" -s "backup;/backup;yes;no;no;backup" -u "backup;backup1234" -u "forbidden;123456" -p'
